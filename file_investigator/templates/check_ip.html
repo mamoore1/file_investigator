@@ -1,0 +1,18 @@
+<h1> IP Security Check </h1>
+
+<form method="post">
+    <input type="text" name="ip" placeholder="Enter IP Address" {% if results.ip %}value="{{results.ip}}"{% endif %}>
+    <select name="source">
+        <option value="abuseipdb">AbuseIPDB</option>
+        <option value="virustotal">VirusTotal</option>
+    </select>
+    <button type="submit">Check IP</button>
+</form>
+
+{% if results %}
+    {% if source == "abuseipdb" %}
+        {% include "check_ip_abuseipdb.html" %}
+    {% elif source == "virustotal" %}
+        {% include "check_ip_virustotal.html" %}
+    {% endif %}
+{% endif %}
