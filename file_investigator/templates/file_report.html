@@ -1,0 +1,54 @@
+<h1> VirusTotal File Report Summary</h1>
+
+
+<form method="post">
+    <input type="text" name="file_id" size="64" placeholder="Enter File Hash" {% if summary.sha256 %}value="{{summary.sha256}}"{% endif %}>
+    <button type="submit">Check File</button>
+</form>
+
+
+{% if error %}
+<p style="color: red;">{{ error }}</p>
+{% endif %}
+
+{% if summary %}
+
+<ul>
+    <li>File Name: {{ summary.file_name }}</li>
+    <li>SHA256: {{ summary.sha256 }}</li>
+    <li>File Type: {{ summary.file_type }}</li>
+    <li>Size: {{ summary.size }} bytes</li>
+    <li>Malicious: {{ summary.malicious }}</li>
+    <li>Total Engines: {{ summary.total_engines }}</li>
+    <li>Reputation: {{ summary.reputation }}</li>
+    <li>First Seen: {{ summary.first_seen }}</li>
+    <li>Compilers:</li>
+    <ul>
+        {% for compiler in summary.compiler %}
+            <li>{{ compiler.name }}</li>
+            <ul>
+                {% if compiler.type %}
+                <li>Type: {{ compiler.type }}</li>
+                {% endif %}
+                {% if compiler.version %}
+                    <li>Version: {{ compiler.version }}</li>
+                {% endif %}
+                {% if compiler.info %}
+                <li>Info: {{ compiler.info }}</li>
+                {% endif %}
+            </ul>
+        {% endfor %}
+    </ul>
+    <li>Tags:</li>
+    <ul>
+        {% for tag in summary.tags %}
+        <li>{{ tag }}</li>
+        {% endfor %}
+    </ul>
+</ul>
+
+<p>Source: {{ summary.source }}. Retrieved At: {{ summary.retrieved_at }}</p>
+
+{% endif %}
+
+<a href="/">Back to Homepage</a>
