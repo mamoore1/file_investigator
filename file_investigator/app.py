@@ -1,6 +1,7 @@
 import httpx
 import ipaddress
 import os
+import re
 from datetime import datetime
 
 from dotenv import load_dotenv
@@ -17,34 +18,37 @@ app = Flask(__name__)
 
 @app.route("/")
 def index():
-    return "index"
+    return render_template("index.html")
 
 
 @app.route("/check-ip", methods=["GET", "POST"])
 def check_ip():
-    if request.method == "GET":
-        source = None
-        results = None
-    else:
+    source = None
+    results = None
+    error = None
+
+    if request.method == "POST":
         ip = request.form.get("ip")
         source = request.form.get("source")
 
         if not ip:
-            return "<p> No IP address provided </p>"
-
-        try:
-            ip = str(ipaddress.ip_address(ip))
-        except ValueError:
-            return "<p> Invalid IP address provided </p>"
-
-        if source == "abuseipdb":
-            results = check_ip_abuseipdb(ip)
-        elif source == "virustotal":
-            results = check_ip_virustotal(ip)
+            error = "No IP address provided."
         else:
-            return "<p> Invalid source provided </p>"
+            try:
+                ip = str(ipaddress.ip_address(ip))
+            except ValueError:
+                error = "Invalid IP address provided."
 
-    return render_template("check_ip.html", results=results, source=source)
+        if not error:
+            if source == "abuseipdb":
+                results = check_ip_abuseipdb(ip)
+            elif source == "virustotal":
+                results = check_ip_virustotal(ip)
+            else:
+                raise ValueError("Invalid source provided.")
+
+    return render_template("check_ip.html", results=results, source=source, error=error)
+
 
 def check_ip_abuseipdb(ip: str):
     url = "https://api.abuseipdb.com/api/v2/check"
@@ -54,7 +58,7 @@ def check_ip_abuseipdb(ip: str):
     response = httpx.get(url, params=params, headers=headers)
 
     if not response.is_success:
-        return "<p> Failed to get IP scores </p>"
+        raise RuntimeError("IP scores not found.")
 
     response_data = response.json()["data"]
 
@@ -83,7 +87,7 @@ def check_ip_virustotal(ip: str):
     response = httpx.get(url, headers=headers)
 
     if not response.is_success:
-        return "<p> Failed to get IP results </p>"
+        raise RuntimeError("Failed to get IP results.")
 
     response_data = response.json()["data"]
     response_data_attributes = response_data.get("attributes")
@@ -123,3 +127,56 @@ def check_ip_virustotal(ip: str):
     }
 
     return results
+
+
+@app.route("/file-report", methods=["GET", "POST"])
+def file_report():
+
+    file_id = None
+    summary = None
+    error = None
+
+    if request.method == "POST":
+        file_id = request.form.get("file_id")
+
+        if not is_valid_hash(file_id):
+            error = "Invalid file hash provided. Must be MD5, SHA-1 or SHA256"
+
+        if not error:
+            url = f"https://www.virustotal.com/api/v3/files/{file_id}"
+            headers = {"x-apikey": virustotal_api_key}
+            response = httpx.get(url, headers=headers)
+
+            if response.is_success:
+                response_json = response.json()
+
+                first_seen = response_json["data"]["attributes"]["first_submission_date"]
+                first_seen = datetime.fromtimestamp(first_seen).isoformat()
+
+                summary = {
+                    "file_name": response_json["data"]["attributes"].get("meaningful_name"),
+                    "sha256": response_json["data"]["attributes"].get("sha256"),
+                    "file_type": response_json["data"]["attributes"].get("type_description"),
+                    "size": response_json["data"]["attributes"].get("size"),
+                    "malicious": response_json["data"]["attributes"].get("last_analysis_stats", {}).get("malicious"),
+                    "total_engines": sum(response_json["data"]["attributes"].get("last_analysis_stats", {}).values()),
+                    "reputation": response_json["data"]["attributes"].get("reputation"),
+                    "first_seen": first_seen,
+                    "compiler": response_json["data"]["attributes"].get("detectiteasy", {}).get("values", []),
+                    "tags": response_json["data"]["attributes"].get("tags", []),
+                    "source": "VirusTotal API",
+                    "retrieved_at": datetime.now().isoformat(),
+                }
+            else:
+                error = "File results not found."
+
+    return render_template("file_report.html", summary=summary, error=error)
+
+
+def is_valid_hash(s: str) -> bool:
+    md5_re = re.compile(r'^[A-Fa-f0-9]{32}$')
+    sha1_re = re.compile(r'^[A-Fa-f0-9]{40}$')
+    sha256_re = re.compile(r'^[A-Fa-f0-9]{64}$')
+
+    s = s.strip()
+    return bool(md5_re.fullmatch(s) or sha1_re.fullmatch(s) or sha256_re.fullmatch(s))

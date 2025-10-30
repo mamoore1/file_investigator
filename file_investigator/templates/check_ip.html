@@ -9,6 +9,12 @@
     <button type="submit">Check IP</button>
 </form>
 
+
+{% if error %}
+    <p style="color: red;">{{ error }}</p>
+{% endif %}
+
+
 {% if results %}
     {% if source == "abuseipdb" %}
         {% include "check_ip_abuseipdb.html" %}
@@ -16,3 +22,5 @@
         {% include "check_ip_virustotal.html" %}
     {% endif %}
 {% endif %}
+
+<a href="/">Back to Homepage</a>
