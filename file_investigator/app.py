@@ -1,5 +1,6 @@
-from flask import Flask, request
+from flask import Flask, request, render_template
 from markupsafe import escape
+from datetime import datetime
 import ipaddress
 import httpx
 import os
@@ -38,14 +39,21 @@ def check_ip_abuseipdb():
     if not response.is_success:
         return "<p> Failed to get IP scores </p>"
 
-    response_json = response.json()["data"]
+    response_data = response.json()["data"]
 
-    return (
-        f"<p>IP Address: {ip}, Country Code: {response_json.get('countryCode')}, "
-        f"Usage Type: {response_json.get('usageType')}, Domain: {response_json.get('domain')}, "
-        f"Abuse Confidence Score: {response_json.get('abuseConfidenceScore')}, "
-        f"Total Reports: {response_json.get('totalReports')}<p>"
-    )
+    results = {
+        "ip": ip,
+        "country_code": response_data.get("countryCode"),
+        "usage_type": response_data.get("usageType"),
+        "isp": response_data.get("isp"),
+        "domain": response_data.get("domain"),
+        "abuse_confidence_score": response_data.get("abuseConfidenceScore"),
+        "total_reports": response_data.get("totalReports"),
+        "source": "AbuseIPDB API",
+        "retrieved_at": datetime.now().isoformat(),
+    }
+
+    return render_template("check_ip_abuseipdb.html", results=results)
 
 
 @app.route("/check-ip-virustotal")
@@ -74,19 +82,11 @@ def check_ip_virustotal():
     response_data = response.json()["data"]
     response_data_attributes = response_data.get("attributes")
 
-    country = response_data_attributes.get("country")
-    continent = response_data_attributes.get("continent")
-    asn = response_data_attributes.get("asn")
-    as_owner = response_data_attributes.get("as_owner")
-    network = response_data_attributes.get("network")
-    regional_internet_registry = response_data_attributes.get("regional_internet_registry")
-    reputation_score = response_data_attributes.get("reputation")
-    last_analysis_stats = response_data_attributes.get("last_analysis_stats")
     whois_data = response_data_attributes.get("whois")
 
     whois_dict = {}
 
-    # Filter whoisdata
+    # Parse whoisdata
     for line in whois_data.splitlines():
         key, _, value = line.partition(":")
         key = key.strip().lower()
@@ -96,20 +96,24 @@ def check_ip_virustotal():
     whois_org_name = whois_dict.get("org-name")
     whois_abuse_mailbox = whois_dict.get("abuse-mailbox")
 
-    whois_date = response_data_attributes.get("last_modification_date") or response_data_attributes.get("whois_data")
+    results = {
+        "ip": ip,
+        "country": response_data_attributes.get("country"),
+        "continent": response_data_attributes.get("continent"),
+        "asn": response_data_attributes.get("asn"),
+        "as_owner": response_data_attributes.get("as_owner"),
+        "network": response_data_attributes.get("network"),
+        "regional_internet_registry": response_data_attributes.get("regional_internet_registry"),
+        "reputation_score": response_data_attributes.get("reputation"),
+        "last_analysis_stats": response_data_attributes.get("last_analysis_stats"),
+        "whois_org_name": whois_org_name,
+        "abuse_mailbox": whois_abuse_mailbox,
+        "whois_date": (
+            response_data_attributes.get("last_modification_date")
+            or response_data_attributes.get("whois_data")
+        ),
+        "source": "VirusTotal API",
+        "retrieved_at": datetime.now().isoformat(),
+    }
 
-    return str(
-        {
-            "Country": country,
-            "Continent": continent,
-            "ASN": asn,
-            "AS Owner": as_owner,
-            "Network": network,
-            "Regional Internet Registry": regional_internet_registry,
-            "Reputation Score": reputation_score,
-            "Last Analysis Stats": last_analysis_stats,
-            "WHOIS": whois_org_name,
-            "Abuse Mailbox": whois_abuse_mailbox,
-            "WHOIS Data": whois_date
-        }
-    )
+    return render_template("check_ip_virustotal.html", results=results)

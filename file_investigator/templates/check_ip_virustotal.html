@@ -1,0 +1,40 @@
+<h1> VirusTotal IP Check Results </h1>
+
+<h2> Summary Card </h2>
+
+<ul>
+    <li>IP: {{results.ip}}</li>
+    <li>Country: {{results.country}}</li>
+    <li>Continent: {{results.continent}}</li>
+    <li>Reputation: {{results.reputation}}</li>
+    <li>Detection Counts:</li>
+    <ul>
+        <li>Malicious: {{results.last_analysis_stats.malicious}}</li>
+        <li>Suspicious: {{results.last_analysis_stats.suspicious}}</li>
+        <li>Undetected: {{results.last_analysis_stats.undetected}}</li>
+    </ul>
+</ul>
+
+<h2> Network Information </h2>
+
+<ul>
+    <li>ASN: {{results.asn}}</li>
+    <li>AS Owner: {{results.as_owner}}</li>
+    <li>Network: {{results.network}}</li>
+    <li>Regional Internet Registry: {{results.regional_internet_registry}}</li>
+</ul>
+
+<h2> Whois Information </h2>
+
+<ul>
+    <li>Whois Org Name: {{results.whois_org_name}}</li>
+    <li>Abuse Mailbox: {{results.abuse_mailbox}}</li>
+    <li>Whois Date: {{results.whois_date}}</li>
+</ul>
+
+<h3> Metadata </h3>
+
+<ul>
+    <li>Source: {{results.source}}</li>
+    <li>Retrieved At: {{results.retrieved_at}}</li>
+</ul>
