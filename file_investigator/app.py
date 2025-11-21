@@ -1,3 +1,4 @@
+import dataclasses
 import httpx
 import ipaddress
 import os
@@ -6,7 +7,7 @@ from datetime import datetime
 
 from dotenv import load_dotenv
 from flask import Flask, request, render_template
-from markupsafe import escape
+
 
 load_dotenv()
 
@@ -128,13 +129,14 @@ def check_ip_virustotal(ip: str):
 
     return results
 
-
+# TODO: add caching so we don't burn through API calls
 @app.route("/file-report", methods=["GET", "POST"])
 def file_report():
 
     file_id = None
     summary = None
     error = None
+    mitre_data = None
 
     if request.method == "POST":
         file_id = request.form.get("file_id")
@@ -167,10 +169,66 @@ def file_report():
                     "source": "VirusTotal API",
                     "retrieved_at": datetime.now().isoformat(),
                 }
+
+                # TODO: separate this out into separate handler
+                # Get MITRE ATT&CK components
+                mitre_url = f"https://www.virustotal.com/api/v3/files/{file_id}/behaviour_mitre_trees"
+                mitre_response = httpx.get(mitre_url, headers=headers)
+
+                # It's fine if there's no MITRE data
+                if mitre_response.is_success:
+                    mitre_response_json = mitre_response.json()
+
+                    # Deduplicate tactics
+                    mitre_data = {}
+
+                    for data in mitre_response_json["data"].values():
+                        for tactic in data["tactics"]:
+
+                            if not mitre_data.get(tactic["id"]):
+                                mitre_data[tactic["id"]] = {
+                                    "id": tactic["id"],
+                                    "name": tactic["name"],
+                                    "link": tactic["link"],
+                                    "description": tactic["description"],
+                                    # "techniques": tactic["techniques"],
+                                }
+
+                                techniques = {}
+                                for technique in tactic["techniques"]:
+                                    techniques[technique["id"]] = {
+                                        "id": technique["id"],
+                                        "name": technique["name"],
+                                        "link": technique["link"],
+                                        "description": technique["description"],
+                                    }
+
+                                mitre_data[tactic["id"]]["techniques"] = techniques
+
+                            else:
+                                # TODO: deduplicate techniques
+                                for technique in tactic["techniques"]:
+                                    if not mitre_data[tactic["id"]]["techniques"].get(technique["id"]):
+                                        mitre_data[tactic["id"]]["techniques"][technique["id"]] = {
+                                            "id": technique["id"],
+                                            "name": technique["name"],
+                                            "link": technique["link"],
+                                            "description": technique["description"],
+                                        }
+
+
+                    # Order all the techniques by id
+                    for tactic in mitre_data.values():
+                        tactic["techniques"] = sorted(tactic["techniques"].values(), key=lambda x: x["id"])
+
+                    # Convert to list and order by tactics (using dataclass to keep dot notation)
+                    mitre_data = [Tactic(**tactic) for tactic in mitre_data.values()]
+                    mitre_data.sort(key=lambda x: x.id)
+
             else:
                 error = "File results not found."
 
-    return render_template("file_report.html", summary=summary, error=error)
+    return render_template("file_report.html", summary=summary, error=error, mitre_data=mitre_data)
 
 
 def is_valid_hash(s: str) -> bool:
@@ -180,3 +238,12 @@ def is_valid_hash(s: str) -> bool:
 
     s = s.strip()
     return bool(md5_re.fullmatch(s) or sha1_re.fullmatch(s) or sha256_re.fullmatch(s))
+
+
+@dataclasses.dataclass
+class Tactic:
+    id: str
+    name: str
+    link: str
+    description: str
+    techniques: list

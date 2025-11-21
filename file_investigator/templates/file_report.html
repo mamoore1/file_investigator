@@ -1,5 +1,7 @@
 <h1> VirusTotal File Report Summary</h1>
 
+<a href="/">Back to Homepage</a>
+
 
 <form method="post">
     <input type="text" name="file_id" size="64" placeholder="Enter File Hash" {% if summary.sha256 %}value="{{summary.sha256}}"{% endif %}>
@@ -12,6 +14,8 @@
 {% endif %}
 
 {% if summary %}
+
+<h3>File Summary</h3>
 
 <ul>
     <li>File Name: {{ summary.file_name }}</li>
@@ -51,4 +55,25 @@
 
 {% endif %}
 
-<a href="/">Back to Homepage</a>
+{% if mitre_data %}
+
+<h3>MITRE ATT&CK</h3>
+
+{% for tactic in mitre_data %}
+    <details>
+        <summary><a href="{{ tactic.link }}">{{ tactic.id }} - {{ tactic.name }}</a></summary>
+        <p>{{ tactic.description }}</p>
+        <ul style="list-style-type: none;">
+            {% for technique in tactic.techniques %}
+            <li>
+                <details>
+                    <summary><a href="{{ technique.link }}">{{ technique.id }} - {{ technique.name }}</a></summary>
+                    <p>{{ technique.description }}</p>
+                </details>
+            </li>
+            {% endfor %}
+        </ul>
+    </details>
+{% endfor %}
+
+{% endif %}

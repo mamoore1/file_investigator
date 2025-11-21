@@ -1,5 +1,7 @@
 <h1> IP Security Check </h1>
 
+<a href="/">Back to Homepage</a>
+
 <form method="post">
     <input type="text" name="ip" placeholder="Enter IP Address" {% if results.ip %}value="{{results.ip}}"{% endif %}>
     <select name="source">
@@ -22,5 +24,3 @@
         {% include "check_ip_virustotal.html" %}
     {% endif %}
 {% endif %}
-
-<a href="/">Back to Homepage</a>
