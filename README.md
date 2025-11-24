@@ -9,8 +9,4 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-Run the Flask development server on localhost:5000 using `python run.py`. Place AbuseIPDB and VirusTotal API keys in a .env file in the top-level directory (where they will be loaded by `dotenv`). IPs can be investigated at the `/check-ip` endpoint and VirusTotal file reports can be accessed using the `/file-report` endpoint.
-
-### To-Do
-- Access the MITRE ATT&CK information on Tools, Techniques and Procedures for provided file hashes
-- Check for any files associated with a provided IP address
+Run the Flask development server on localhost:5000 using `python run.py`. Alternatively, run using gunicorn via: `gunicorn --workers=2 file_investigator.app:app`. Place AbuseIPDB and VirusTotal API keys in a .env file in the top-level directory (where they will be loaded by `dotenv`). IPs can be investigated at the `/check-ip` endpoint and VirusTotal file reports can be accessed using the `/file-report` endpoint.
